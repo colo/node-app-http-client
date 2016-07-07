@@ -2,7 +2,8 @@
 
 var Moo = require("mootools"),
 	path = require('path'),
-	fs = require('fs');
+	fs = require('fs'),
+	request = require('request');
 	//express = require('express'),
 	//semver = require('semver'),
 	//session = require('express-session');//for passport session
@@ -23,7 +24,11 @@ module.exports = new Class({
   ON_USE: 'onUse',
   ON_USE_APP: 'onUseApp',
   
-  //app: null,
+  app: null,
+  uri: null,
+  
+  available_methods: ['put', 'patch', 'post', 'head', 'del', 'delete', 'get'],
+  
   logger: null,
   authorization:null,
   //authentication: null,
@@ -32,6 +37,10 @@ module.exports = new Class({
 			
 		id: '',
 		path: '',
+		
+		scheme: 'http',
+		url: '127.0.0.1',
+		port: 8080,
 		
 		////logs : { 
 			////path: './logs' 
@@ -165,7 +174,9 @@ module.exports = new Class({
 		this.setOptions(options);//override default options
 		
 		//var app = express();
-		//this.app = app;
+		this.app = request;
+		
+		this.uri = this.options.scheme+'://'+this.options.url+':'+this.options.port;
 		
 		////app.use(bodyParser.urlencoded({ extended: false }))
 		
@@ -316,7 +327,7 @@ module.exports = new Class({
 		
 		//this.sanitize_params();
 		
-		//this.apply_routes();
+		this.apply_routes();
 		
 		//this.apply_api_routes();
 		
@@ -444,44 +455,66 @@ module.exports = new Class({
 			//next();
 	  //}
   //},
-  //apply_routes: function(){
+  apply_routes: function(){
 	  
-		//if(this.options.routes){
+	  //Array.each(this.available_methods, function(method){
+			//this[method] = function(){console.log(method); return true;};
+		//}.bind(this));
+		
+		if(this.options.routes){
 			//var app = this.app;
 			
-			//Object.each(this.options.routes, function(routes, verb){//for each HTTP VERB (get/post/...) there is an arry of routes
+			Object.each(this.options.routes, function(routes, verb){//for each HTTP VERB (get/post/...) there is an arry of routes
 				
 				//var content_type = (typeof(this.options.content_type) !== "undefined") ? this.options.content_type : '';
 				
-				//routes.each(function(route){//each array is a route
-					
+				routes.each(function(route){//each array is a route
+					//var path = route.path || '';
 					////var path = app.path + route.path;
 					//content_type = (typeof(route.content_type) !== "undefined") ? route.content_type : content_type;
 				
 					//////console.log('specific route content-type: '+content_type);	
 				
-					//var callbacks = [];
-					//route.callbacks.each(function(fn){
+					var callbacks = [];
+					route.callbacks.each(function(fn){
 						
-						////console.log('rote function: ' + fn);
+						console.log('route function: ' + fn);
 						
 						//if(content_type != ''){
 							//callbacks.push(this.check_content_type.bind(this, this[fn].bind(this), content_type));
 						//}
 						//else{
-							//callbacks.push(this[fn].bind(this));
+							callbacks.push(this[fn].bind(this));
 						//}
 						
-					//}.bind(this));
+					}.bind(this));
+					
+					console.log(route);
+					console.log(callbacks[0]);
+					console.log(this.uri+this.options.path+route.path);
 					
 					//app[verb](route.path, callbacks);
+					this[verb] = function(options){
+						return this.app[verb](
+							Object.merge({
+								uri: this.uri+this.options.path+route.path,
+							}, options),
+							function(err, resp, body){
+								Array.each(callbacks, function(callback){
+									callback(err, resp, body);
+								}.bind(this))
+								
+							}.bind(this)
+						);
+					};
+					
+				}.bind(this));
 
-				//}.bind(this));
-
-			//}.bind(this));
-		//}
-	
-  //},
+			}.bind(this));
+		}
+	//console.log('this.get');
+	//console.log(this.get);
+  },
   use: function(mount, app){
 		//console.log('app');
 		//console.log(typeOf(app));
