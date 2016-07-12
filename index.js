@@ -372,7 +372,7 @@ module.exports = new Class({
 							);
 							
 							//console.log(merged);
-								
+							
 							return this.request[verb](
 								merged,
 								function(err, resp, body){
@@ -410,8 +410,8 @@ module.exports = new Class({
 		if(typeOf(app) == 'class' || typeOf(app) == 'object')
 			this.fireEvent(this.ON_USE_APP, [mount, app, this]);
 		
-		if(typeOf(app) == 'class')
-			app = new app();
+		//if(typeOf(app) == 'class')
+			//app = new app();
 		
 		if(typeOf(app) == 'object'){
 			////console.log('extend_app.authorization');
@@ -434,8 +434,46 @@ module.exports = new Class({
 			//this.app.use(mount, app);
 		}
 		
-		var merged = this._merge(mount, app);
-		this._merged_apps = Object.merge(this._merged_apps, merged);
+		//var merged = this._merge(mount, app);
+		//Object.merge(this._merged_apps, this._merge(mount, app));
+		
+		//console.log(this._merged_apps);
+		
+		//Object.append(this, this._merge(mount, app));
+		//console.log(this._merge(mount, app));
+		var to_append = this._merge(mount, app);
+		
+		console.log(Object.keys(to_append)[0]);
+		
+		var key = Object.keys(to_append)[0];
+		if(this[key]){//an app has beend loaded on that key
+			var tmp = this[key];
+			if(typeOf(tmp) == 'object'){
+				//var tmpObj = {};
+				//tmpObj[key] = tmp;
+				
+				//console.log(to_append);
+				//console.log(tmp);
+				delete this[key];
+				
+				Object.append(to_append[key], tmp);
+				//Object.each(tmp, function(value, tmpKey){
+					//console.log(value);
+					////Object.append(to_append[tmpKey], value);
+				//});
+				
+				
+				
+			}
+			
+			Object.append(this, to_append);
+			//console.log('TYPEOF');
+			//console.log(to_append);
+			//console.log(tmp);
+		}
+		else{	
+			Object.append(this, to_append);
+		}
 		
   },
   _merge: function(mount, app){
@@ -445,7 +483,12 @@ module.exports = new Class({
 		
 		if(Object.getLength(mount) > 0){
 			Object.each(mount, function(value, key){
+				//console.log('--KEY--');
+				//console.log(key);
+				//console.log(value);
+				
 				mount[key] = this._merge(value, app);
+				
 			}.bind(this));
 			
 			return mount;
