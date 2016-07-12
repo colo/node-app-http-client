@@ -3,9 +3,13 @@
 var Moo = require("mootools"),
 	path = require('path'),
 	fs = require('fs'),
-	request = require('request');
+	request = require('request'),
+	pathToRegexp = require('path-to-regexp'),
+	semver = require('semver');
+	
+	//Layer = require('express/lib/router/layer');//express Layer
 	//express = require('express'),
-	//semver = require('semver'),
+	
 	//session = require('express-session');//for passport session
 	////bodyParser = require('body-parser'),//json parse
 
@@ -24,14 +28,18 @@ module.exports = new Class({
   ON_USE: 'onUse',
   ON_USE_APP: 'onUseApp',
   
-  app: null,
-  uri: null,
+  //app: null,
+  //uri: null,
+  request: null,
+  
+  api: {},
   
   available_methods: ['put', 'patch', 'post', 'head', 'del', 'delete', 'get'],
   
   logger: null,
   authorization:null,
   //authentication: null,
+  _merged_apps: {},
   
   options: {
 			
@@ -42,29 +50,26 @@ module.exports = new Class({
 		url: '127.0.0.1',
 		port: 8080,
 		
+		//request: {
+		//},
+		
+		headers: {},
+		
+		jar: false,
 		////logs : { 
 			////path: './logs' 
 		////},
 		logs: null,
 		
-		//session: {
-			////store: new SessionMemoryStore,
-			////proxy: true,
-			////cookie: { path: '/', httpOnly: true, maxAge: null },
-			////cookie : { secure : false, maxAge : (4 * 60 * 60 * 1000) }, // 4 hours
-			////session: {store: null, proxy: true, cookie: { path: '/', httpOnly: true, maxAge: null }, secret: 'keyboard cat'},
-			//cookie: { path: '/', httpOnly: true, maxAge: null, secure: false },
-			//secret: 'keyboard cat',
-			//resave: true,
-			//saveUninitialized: true
+		authentication: null,
+		
+		//authentication: {
+			//username: 'user',
+			//password: 'pass',
+			//sendImmediately: true,
+			//bearer: 'bearer,
+			//basic: false
 		//},
-		
-		//authentication: null,
-		
-		////authentication: {
-			////users : [],
-			////init: true
-		////},
 		
 		////authorization: {
 			////config: null,
@@ -72,15 +77,9 @@ module.exports = new Class({
 		////},
 		authorization: null,
 		
-		//params: {	  
-		//},
 		
-		/**
-		 * @content_type regex to restric allowed req.headers['content-type'], if undefined or '', allow all
-		 * can be nested inside each route
-		 * http://stackoverflow.com/questions/23190659/expressjs-limit-acceptable-content-types
-		* */
-		//content_type: /text\/plain/,
+		content_type: 'text/plain',
+		gzip: true,
 		
 		/*routes: {
 			
@@ -106,39 +105,34 @@ module.exports = new Class({
 			
 		},*/
 		
-		/*api: {
+		api: {
 			
-			content_type: /^application\/(?:x-www-form-urlencoded|x-.*\+json|json)(?:[\s;]|$)/,
+			content_type: 'application/json',
 			
-			//path: '/api',
 			path: '',
 			
 			version: '0.0.0',
 			
 			versioned_path: false, //default false
 			
-			force_versioned_path: true, //default true, if false & version_path true, there would be 2 routes, filter with content-type
+			//accept_header: 'accept-version', //implement?
 			
-			accept_header: 'accept-version',
-			
-			routes: {
+			/*routes: {
 				get: [
 					{
 					path: '',
 					callbacks: ['get_api'],
-					content_type: /^application\/(?:x-www-form-urlencoded|x-.*\+json|json)(?:[\s;]|$)/,
+					content_type: 'application/x-www-form-urlencoded',
 					//version: '1.0.1',
 					},
 					{
 					path: ':service_action',
 					callbacks: ['get_api'],
-					content_type: /^application\/(?:x-www-form-urlencoded|x-.*\+json|json)(?:[\s;]|$)/,
 					version: '2.0.0',
 					},
 					{
 					path: ':service_action',
 					callbacks: ['get_api'],
-					content_type: /^application\/(?:x-www-form-urlencoded|x-.*\+json|json)(?:[\s;]|$)/,
 					version: '1.0.1',
 					},
 				],
@@ -158,6 +152,7 @@ module.exports = new Class({
 				
 			},*/
 			
+			
 			/*doc: {
 				'/': {
 					type: 'function',
@@ -166,23 +161,15 @@ module.exports = new Class({
 					example: '{"username":"lbueno","password":"40bd001563085fc35165329ea1ff5c5ecbdbbeef"} / curl -v -L -H "Accept: application/json" -H "Content-type: application/json" -X POST -d \' {"user":"something","password":"app123"}\'  http://localhost:8080/login'
 
 				}
-			},
-		},*/
+			},*/
+		},
   },
   initialize: function(options){
 		
 		this.setOptions(options);//override default options
 		
-		//var app = express();
-		this.app = request;
+		this.request = request;
 		
-		this.uri = this.options.scheme+'://'+this.options.url+':'+this.options.port;
-		
-		////app.use(bodyParser.urlencoded({ extended: false }))
-		
-		//// parse application/json
-		////app.use(bodyParser.json())
-
 
 		/**
 		 * logger
@@ -208,75 +195,6 @@ module.exports = new Class({
 		 * logger
 		 *  - end
 		 * **/
-		
-		//var SessionMemoryStore = require('express-session/session/memory');//for socket.io / sessions
-		
-		/**
-		 * session
-		 *  - start
-		 * **/
-		//if(this.options.session){
-			
-			//var sess_middleware = null;
-			
-			//if(typeof(this.options.session) == 'function'){
-				//sess_middleware = this.options.session;
-				//this.options.session = {};
-			//}
-			//else{
-				//sess_middleware = session(this.options.session);
-			//}
-				
-			//app.use(sess_middleware);
-		//}
-		/**
-		 * session
-		 *  - end
-		 * **/
-		 
-		
-		/**
-		 * authentication
-		 * - start
-		 * */
-		//if(this.options.authentication && this.options.authentication.init !== false){
-			//var authentication = null;
-			
-			//if(typeof(this.options.authentication) == 'class'){
-				//authentication = new this.options.authentication(this, {});
-				//this.options.authentication = {};
-			//}
-			//else if(typeof(this.options.authentication) == 'function'){
-				//authentication = this.options.authentication;
-				//this.options.authentication = {};
-			//}
-			//else{
-				
-				//var MemoryStore = require('node-authentication').MemoryStore;
-			
-				////----Mockups libs
-				//var UsersAuth = require(path.join(__dirname, 'libs/mockups/authentication/type/users'));
-				
-				//var users = this.options.authentication.users;
-				
-				//authentication = new Authentication(this, {
-										//store: new MemoryStore(users),
-										//auth: new UsersAuth({users: users}),
-										//passport: {session: (this.options.session) ? true : false}
-								  //});
-			//}
-			
-			//this.authentication = authentication;
-			
-			//if(this.options.authentication.users)//empty users data, as is easy accesible
-				//this.options.authentication.users = {};
-			
-			
-		//}
-		/**
-		 * authentication
-		 * - end
-		 * */
 		
 		/**
 		 * authorization
@@ -319,205 +237,173 @@ module.exports = new Class({
 		 * - end
 		 * */
 		
-		//this.profile('app_init');//start profiling
+		if(this.options.api && this.options.api.routes)
+			this.apply_routes(this.options.api.routes, true);
 		
-		//if(this.options.api.versioned_path !== true)
-			//this.options.api.force_versioned_path = false;
-
-		
-		//this.sanitize_params();
-		
-		this.apply_routes();
-		
-		//this.apply_api_routes();
-		
-		
-		//this.profile('app_init');//end profiling
-		
-		//this.log('admin', 'info', 'app started');
+		this.apply_routes(this.options.routes, false);
 		
 		
   },
-	/**
-	* @params
-	* @todo should rise an Error???
-	* */
-  sanitize_params: function(){
-	 
-		var params = Object.clone(this.options.params);
+  apply_routes: function(routes, is_api){
+		var uri = '';
 		
-		if(params){
-			var app = this.app;
-			
-			Object.each(params, function(condition, param){
-				
-				app.param(param, function(req, res, next, str){
-					
-					if(condition.exec(str) == null)
-						req.params[param] = null;
-						
-					next();
-				});
-			});
+		if(this.options.authentication &&
+			this.options.authentication.basic &&
+			(this.options.authentication.user || this.options.authentication.username) &&
+			(this.options.authentication.pass || this.options.authentication.password))
+		{
+			var user = this.options.authentication.user || this.options.authentication.username;
+			var passwd = this.options.authentication.pass || this.options.authentication.password;
+			uri = this.options.scheme+'://'+user+':'+passwd+'@'+this.options.url+':'+this.options.port;
 		}
-  }.protect(),
-  
-  //apply_api_routes: function(){
-		//var api = this.options.api;
+		else{
+			uri = this.options.scheme+'://'+this.options.url+':'+this.options.port;
+		}
 		
-		//if(api.routes){
-			//var app = this.app;
+		var path = '';
+		var instance = null;
+		var api = this.options.api;
+		
+		if(is_api){
+			path = ((typeof(api.path) !== "undefined") ? this.options.path+api.path : this.options.path).replace('//', '/');
+			instance = this.api;
+		}
+		else{
+			path = (typeof(this.options.path) !== "undefined") ? this.options.path : '';
+			instance = this;
+		}
 			
-			//Object.each(api.routes, function(routes, verb){//for each HTTP VERB (get/post/...) there is an arry of routes
-				
-				//var content_type = (typeof(api.content_type) !== "undefined") ? api.content_type : '';
-				//var version = (typeof(api.version) !== "undefined") ? api.version : '';
-				
-				//routes.each(function(route){//each array is a route
-					
-					//content_type = (typeof(route.content_type) !== "undefined") ? route.content_type : content_type;
-					//version = (typeof(route.version) !== "undefined") ? route.version : version;
-					
-					//var path = '';
-					//path += (typeof(api.path) !== "undefined") ? api.path : '';
-					
-					//var versioned_path = '';
-					
-					//if(api.versioned_path === true && version != ''){
-						//versioned_path = path + '/v'+semver.major(version);
-						//versioned_path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
-					//}
-					
-					//path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
-					
-					//var callbacks = [];
-					//route.callbacks.each(function(fn){
-						//////console.log('apply_api_routes this[func]: '+fn);
-						
-						////if(content_type != ''){
-							////~ callbacks.push(this.check_content_type_api.bind(this));
-							//callbacks.push(
-								//this.check_content_type.bind(this, 
-									//this.check_accept_version.bind(this, 
-										//this[fn].bind(this),
-										//version),
-								//content_type)
-							//);
-						////}
-						////else{
-							////callbacks.push(this[fn].bind(this));
-						////}
-						
-						
-					//}.bind(this));
-					
-					////console.log('api path '+path);
-					
-					//if(api.force_versioned_path){//route only work on api-version path
-						//app[verb](versioned_path, callbacks);
-					//}
-					//else{//route works on defined path
-						//if(api.versioned_path === true && version != ''){//route also works on api-version path
-							//app[verb](versioned_path, callbacks);
-						//}
-						//app[verb](path, callbacks);
-					//}
-
-				//}.bind(this));
-
-			//}.bind(this));
-		//}
-  //},
-  //check_content_type: function(callback, content_type, req, res, next){
-	  
-	  //if(this.options.api.force_versioned_path ||//if apt-version path is forced, no checks needed
-			//content_type.test(req.get('content-type')) || //check if content-type match
-			//!req.get('content-type')){//or if no content-type it specified
-			//callback(req, res, next);
-	  //}
-	  //else{
-			//next();
-	  //}
-  //},
-  //check_accept_version: function(callback, version, req, res, next){
-	  
-	  //var accept_header = (this.options.api.accept_header) ? this.options.api.accept_header : 'accept-version';
-	  
-	  ////if(version.test(req.headers['accept-version']) || !version){
-	  //if(!version ||
-		//!req.headers[accept_header] ||
-		//semver.satisfies(version, req.headers[accept_header])){
-		
-		//req.version = version;	
-		//callback(req, res, next);
-	  //}
-	  //else{
-			//next();
-	  //}
-  //},
-  apply_routes: function(){
-	  
-	  //Array.each(this.available_methods, function(method){
-			//this[method] = function(){console.log(method); return true;};
-		//}.bind(this));
-		
-		if(this.options.routes){
-			//var app = this.app;
+		Array.each(this.available_methods, function(verb){
 			
-			Object.each(this.options.routes, function(routes, verb){//for each HTTP VERB (get/post/...) there is an arry of routes
+			instance[verb] = function(verb, original_func, options){
 				
-				//var content_type = (typeof(this.options.content_type) !== "undefined") ? this.options.content_type : '';
+				options = options || {};
 				
-				routes.each(function(route){//each array is a route
-					//var path = route.path || '';
-					////var path = app.path + route.path;
-					//content_type = (typeof(route.content_type) !== "undefined") ? route.content_type : content_type;
+				if(!options.auth &&
+					this.options.authentication &&
+					(this.options.authentication.user || this.options.authentication.username) &&
+					(this.options.authentication.pass || this.options.authentication.password))
+				{
+					options.auth = this.options.authentication;
+				}
 				
-					//////console.log('specific route content-type: '+content_type);	
+				var content_type = '';
+				var version = '';
 				
-					var callbacks = [];
-					route.callbacks.each(function(fn){
+				if(is_api){
+					content_type = (typeof(api.content_type) !== "undefined") ? api.content_type : '';
+					version = (typeof(api.version) !== "undefined") ? api.version : '';
+				}
+				else{
+					content_type = (typeof(this.options.content_type) !== "undefined") ? this.options.content_type : '';
+				}
+				
+				var gzip = this.options.gzip || false;
+				
+				if(routes[verb]){
+					var uri_matched = false;
+					
+					Array.each(routes[verb], function(route){
 						
-						console.log('route function: ' + fn);
+						content_type = (typeof(route.content_type) !== "undefined") ? route.content_type : content_type;
+						gzip = route.gzip || false;
 						
-						//if(content_type != ''){
-							//callbacks.push(this.check_content_type.bind(this, this[fn].bind(this), content_type));
-						//}
-						//else{
-							callbacks.push(this[fn].bind(this));
-						//}
+						var keys = []
+						var re = pathToRegexp(route.path, keys);
+						
+						//console.log('route path: '+route.path);
+						////console.log(re.exec(options.uri));
+						//console.log('options.uri: '+options.uri);
+						//console.log(path);
+						//console.log('--------');
+							
+						if(options.uri != null && re.test(options.uri) == true){
+							uri_matched = true;
+							
+							var callbacks = [];
+							route.callbacks.each(function(fn){
+								//console.log('route function: ' + fn);
+								
+								//if the callback function, has the same name as the verb, we had it already copied as "original_func"
+								if(fn == verb){
+									callbacks.push(original_func.bind(this));
+								}
+								else{
+									callbacks.push(this[fn].bind(this));
+								}
+								
+							}.bind(this));
+							
+							
+							if(is_api){
+								//var versioned_path = '';
+								if(api.versioned_path === true && version != ''){
+									path = path + '/v'+semver.major(version);
+									path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
+								}
+								else{
+									path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
+								}
+							}
+							
+							path = path.replace('//', '/');
+							
+							
+						
+							if(path == '/')
+								path = '';
+								
+							//console.log(path+options.uri);
+							
+							var merged = {};
+							Object.merge(
+								merged,
+								options,
+								this.options.headers,
+								{
+									baseUrl: uri,
+									uri: path+options.uri,
+									gzip: gzip,
+									headers: {
+										'Content-Type': content_type
+									},
+									jar: this.options.jar
+								}
+							);
+							
+							//console.log(merged);
+								
+							return this.request[verb](
+								merged,
+								function(err, resp, body){
+									Array.each(callbacks, function(callback){
+										//console.log(callback);
+										callback(err, resp, body);
+									}.bind(this))
+									
+								}.bind(this)
+							);
+						}
 						
 					}.bind(this));
 					
-					console.log(route);
-					console.log(callbacks[0]);
-					console.log(this.uri+this.options.path+route.path);
-					
-					//app[verb](route.path, callbacks);
-					this[verb] = function(options){
-						return this.app[verb](
-							Object.merge({
-								uri: this.uri+this.options.path+route.path,
-							}, options),
-							function(err, resp, body){
-								Array.each(callbacks, function(callback){
-									callback(err, resp, body);
-								}.bind(this))
-								
-							}.bind(this)
-						);
-					};
-					
-				}.bind(this));
+					if(!uri_matched)
+						throw new Error('No routes matched for URI: '+uri+path+options.uri);
+				}
+				else{
+					throw new Error('No routes defined for method: '+verb.toUpperCase());
+				}
+				
+				
+			}.bind(this, verb, this[verb]);//copy the original function if there are func like this.get, this.post, etc
 
-			}.bind(this));
-		}
-	//console.log('this.get');
-	//console.log(this.get);
-  },
-  use: function(mount, app){
+		}.bind(this));
+		
+	},
+	use: function(mount, app){
 		//console.log('app');
 		//console.log(typeOf(app));
+		//console.log(mount);
 		
 		this.fireEvent(this.ON_USE, [mount, app, this]);
 		
@@ -542,17 +428,44 @@ module.exports = new Class({
 				);
 			}
 			
-			this.app.use(mount, app.express());
+			//this.app.use(mount, app.express());
 		}
 		else{
-			this.app.use(mount, app);
+			//this.app.use(mount, app);
 		}
+		
+		var merged = this._merge(mount, app);
+		this._merged_apps = Object.merge(this._merged_apps, merged);
+		
   },
+  _merge: function(mount, app){
+		//console.log('--mount--');
+		//console.log(mount);
+		//console.log(Object.getLength(mount));
+		
+		if(Object.getLength(mount) > 0){
+			Object.each(mount, function(value, key){
+				mount[key] = this._merge(value, app);
+			}.bind(this));
+			
+			return mount;
+		}
+		else{
+			return app;
+		}
+	},
   load: function(wrk_dir, options){
 		options = options || {};
 		
-		////console.log('load.options');
-		////console.log(options);
+		options.scheme = options.scheme || this.options.scheme;
+		options.url = options.url || this.options.url;
+		options.port = options.port || this.options.port;
+		options.authentication = options.authentication || this.options.authentication;
+		options.jar = options.jar || this.options.jar;
+		options.gzip = options.gzip || this.options.gzip;
+		
+		//console.log('load.options');
+		//console.log(options);
 		
 		fs.readdirSync(wrk_dir).forEach(function(file) {
 
@@ -560,12 +473,12 @@ module.exports = new Class({
 			
 			
 			if(! (file.charAt(0) == '.')){//ommit 'hiden' files
-				////console.log('-------');
+				//console.log('-------');
 				
-				////console.log('app load: '+ file);
+				//console.log('app load: '+ file);
 				var app = null;
 				var id = '';//app id
-				var mount = '';
+				var mount = {};
 				
 				if(fs.statSync(full_path).isDirectory() == true){//apps inside dir
 					
@@ -573,19 +486,27 @@ module.exports = new Class({
 					
 					var dir = file;//is dir
 					
+					
 					fs.readdirSync(full_path).forEach(function(file) {//read each file in directory
+						
+						var app_path = this.options.path;
 						
 						if(path.extname(file) == '.js' && ! (file.charAt(0) == '.')){
 							
 							////console.log('app load js: '+ file);
 							app = require(path.join(full_path, file));
 							
+							mount[dir] = {};
 							if(file == 'index.js'){
-								mount = id = dir;
+								//mount = id = dir;
+								//mount[dir] = {};
+								app_path += dir;
 							}
 							else{
-								id = dir+'.'+path.basename(file, '.js');
-								mount = dir+'/'+path.basename(file, '.js');
+								//id = dir+'.'+path.basename(file, '.js');
+								//mount = dir+'/'+path.basename(file, '.js');
+								mount[dir][path.basename(file, '.js')] = {};
+								app_path += dir+'/'+path.basename(file, '.js');
 							}
 							
 							if(typeOf(app) == 'class'){//mootools class
@@ -593,6 +514,10 @@ module.exports = new Class({
 								
 								this.fireEvent(this.ON_LOAD_APP, [app, this]);
 								
+								//if(app.options.path)
+									//app_path = this.options.path+app.options.path;
+								
+								options.path = app_path;
 								app = new app(options);
 								
 								/*////console.log('mootols_app.params:');
@@ -606,7 +531,7 @@ module.exports = new Class({
 								////console.log('express app...nothing to do');
 							}
 							
-							mount = '/'+mount;
+							//mount = '/'+mount;
 							
 							this.use(mount, app);
 							//apps[app.locals.id || id] = {};
@@ -625,16 +550,23 @@ module.exports = new Class({
 					id = path.basename(file, '.js');
 					
 					if(file == 'index.js'){
-						mount = '/';
+						//mount = '/';
 					}
 					else{
-						mount = '/'+id;
+						//mount = '/'+id;
+						mount[id] = {};
+						app_path += '/'+id;
 					}
 					
 					if(typeOf(app) == 'class'){//mootools class
 						
 						this.fireEvent(this.ON_LOAD_APP, [app, this]);
 						
+						//if(app.options.path)
+							//app_path = this.options.path+app.options.path;
+								
+						options.path = app_path;
+								
 						app = new app(options);
 						//app = instance.express();
 						//id = (instance.id) ? instance.id : id;
@@ -643,7 +575,9 @@ module.exports = new Class({
 						////console.log('express app...nothing to do');
 					}
 					
+					//console.log(mount);
 					this.use(mount, app);
+					
 					//apps[app.locals.id || id] = {};
 					//apps[app.locals.id || id]['app'] = app;
 					//apps[app.locals.id || id]['mount'] = mount;
@@ -653,81 +587,13 @@ module.exports = new Class({
 			}
 		}.bind(this))
 		
+		//console.log(this._merged_apps);
+		Object.append(this, this._merged_apps);
+		
 		//return apps;
 	},
-  //express: function(){
-	  //return this.app;
-  //},
-  //404: function(req, res, next, err){
-		
-		//res.status(404);
-		
-		//res.format({
-			//'text/plain': function(){
-				//res.send('Not Found');
-			//},
-
-			//'text/html': function(){
-				//res.send('Not Found');
-			//},
-
-			//'application/json': function(){
-				//res.send({error: 'Not Found'});
-			//},
-
-			//'default': function() {
-				//// log the request and respond with 406
-				//res.status(406).send('Not Found '+ err);
-			//}
-		//});
-	//},
-  ////required for 'check_authentication', should be 'implement' injected on another module, auto-loaded by authentication?
-  //403: function(req, res, next, err){
-		
-		//res.status(403);
-		
-		//res.format({
-			//'text/plain': function(){
-				//res.send(err);
-			//},
-
-			//'text/html': function(){
-				//res.send(err);
-			//},
-
-			//'application/json': function(){
-				//res.send(err);
-			//},
-
-			//'default': function() {
-				//// log the request and respond with 406
-				//res.status(406).send('Not Acceptable '+ err);
-			//}
-		//});
-	//},
-	////required for 'check_authentication', should be 'implement' injected on another module, auto-loaded by authentication?
-	//500: function(req, res, next, err){
-		
-		//res.status(500);
-		
-		//res.format({
-			//'text/plain': function(){
-				//res.send(err);
-			//},
-
-			//'text/html': function(){
-				//res.send(err);
-			//},
-
-			//'application/json': function(){
-				//res.send(err);
-			//},
-
-			//'default': function() {
-				//// log the request and respond with 406
-				//res.status(406).send('Not Acceptable '+ err);
-			//}
-		//});
-	//},
+  
 	
 });
+
+
