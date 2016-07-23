@@ -28,6 +28,9 @@ module.exports = new Class({
   ON_USE: 'onUse',
   ON_USE_APP: 'onUseApp',
   
+  ON_CONNECT: 'onConnect',
+  ON_CONNECT_ERROR: 'onConnectError',
+  
   //app: null,
   //uri: null,
   request: null,
@@ -260,26 +263,39 @@ module.exports = new Class({
 			uri = this.options.scheme+'://'+this.options.url+':'+this.options.port;
 		}
 		
-		var path = '';
+		
 		var instance = null;
 		var api = this.options.api;
 		
 		if(is_api){
-			path = ((typeof(api.path) !== "undefined") ? this.options.path+api.path : this.options.path).replace('//', '/');
+			//path = ((typeof(api.path) !== "undefined") ? this.options.path+api.path : this.options.path).replace('//', '/');
 			instance = this.api;
 		}
 		else{
-			path = (typeof(this.options.path) !== "undefined") ? this.options.path : '';
+			//path = (typeof(this.options.path) !== "undefined") ? this.options.path : '';
 			instance = this;
 		}
 			
 		Array.each(this.available_methods, function(verb){
 			
 			instance[verb] = function(verb, original_func, options){
+				var request;//the request object to return
+				
+				var path = '';
+				if(is_api){
+					path = ((typeof(api.path) !== "undefined") ? this.options.path+api.path : this.options.path).replace('//', '/');
+				}
+				else{
+					path = (typeof(this.options.path) !== "undefined") ? this.options.path : '';
+				}
+				
 				
 				options = options || {};
 				
-				if(!options.auth &&
+				if(options.auth === false || options.auth === null){
+					delete options.auth;
+				}
+				else if(!options.auth &&
 					this.options.authentication &&
 					(this.options.authentication.user || this.options.authentication.username) &&
 					(this.options.authentication.pass || this.options.authentication.password))
@@ -339,21 +355,28 @@ module.exports = new Class({
 								//var versioned_path = '';
 								if(api.versioned_path === true && version != ''){
 									path = path + '/v'+semver.major(version);
-									path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
+									//path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
 								}
 								else{
-									path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
+									//path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
 								}
 							}
 							
+							//if(!is_api){
+								path += '/'+options.uri;
+							//}
+							
 							path = path.replace('//', '/');
 							
-							
-						
 							if(path == '/')
 								path = '';
+							
+							
 								
 							//console.log(path+options.uri);
+							//console.log('PATH');
+							//console.log(options.uri);
+							//console.log(options.uri);
 							
 							var merged = {};
 							Object.merge(
@@ -362,7 +385,8 @@ module.exports = new Class({
 								this.options.headers,
 								{
 									baseUrl: uri,
-									uri: path+options.uri,
+									//uri: path+options.uri,
+									uri: path,
 									gzip: gzip,
 									headers: {
 										'Content-Type': content_type
@@ -373,12 +397,20 @@ module.exports = new Class({
 							
 							//console.log(merged);
 							
-							return this.request[verb](
+							request = this.request[verb](
 								merged,
 								function(err, resp, body){
+									
+									if(err){
+										this.fireEvent(this.ON_CONNECT_ERROR, {options: merged, uri: options.uri, route: route.path, error: err });
+									}
+									else{
+										this.fireEvent(this.ON_CONNECT, {options: merged, uri: options.uri, route: route.path, response: resp, body: body });
+									}
+									
 									Array.each(callbacks, function(callback){
 										//console.log(callback);
-										callback(err, resp, body);
+										callback(err, resp, body, {options: merged, uri: options.uri, route: route.path });
 									}.bind(this))
 									
 								}.bind(this)
@@ -391,9 +423,12 @@ module.exports = new Class({
 						throw new Error('No routes matched for URI: '+uri+path+options.uri);
 				}
 				else{
+					//console.log(routes);
 					throw new Error('No routes defined for method: '+verb.toUpperCase());
+					
 				}
 				
+				return request;
 				
 			}.bind(this, verb, this[verb]);//copy the original function if there are func like this.get, this.post, etc
 
@@ -443,7 +478,7 @@ module.exports = new Class({
 		//console.log(this._merge(mount, app));
 		var to_append = this._merge(mount, app);
 		
-		console.log(Object.keys(to_append)[0]);
+		//console.log(Object.keys(to_append)[0]);
 		
 		var key = Object.keys(to_append)[0];
 		if(this[key]){//an app has beend loaded on that key
@@ -471,7 +506,8 @@ module.exports = new Class({
 			//console.log(to_append);
 			//console.log(tmp);
 		}
-		else{	
+		else{
+			//console.log(to_append);	
 			Object.append(this, to_append);
 		}
 		
