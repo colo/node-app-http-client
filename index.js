@@ -278,7 +278,13 @@ module.exports = new Class({
 			
 		Array.each(this.available_methods, function(verb){
 			
-			instance[verb] = function(verb, original_func, options){
+			/**
+			 * @callback_alt if typeof function, gets executed instead of the method asigned to the matched route (is an alternative callback, instead of the default usage)
+			 * */
+			instance[verb] = function(verb, original_func, options, callback_alt){
+				//console.log('---gets called??---')
+				//console.log(arguments);
+				
 				var request;//the request object to return
 				
 				var path = '';
@@ -337,19 +343,24 @@ module.exports = new Class({
 							uri_matched = true;
 							
 							var callbacks = [];
-							route.callbacks.each(function(fn){
-								//console.log('route function: ' + fn);
-								
-								//if the callback function, has the same name as the verb, we had it already copied as "original_func"
-								if(fn == verb){
-									callbacks.push(original_func.bind(this));
-								}
-								else{
-									callbacks.push(this[fn].bind(this));
-								}
-								
-							}.bind(this));
 							
+							/**
+							 * if no callbacks defined for a route, you should use callback_alt param
+							 * */
+							if(route.callbacks && route.callbacks.length > 0){
+								route.callbacks.each(function(fn){
+									//console.log('route function: ' + fn);
+									
+									//if the callback function, has the same name as the verb, we had it already copied as "original_func"
+									if(fn == verb){
+										callbacks.push(original_func.bind(this));
+									}
+									else{
+										callbacks.push(this[fn].bind(this));
+									}
+									
+								}.bind(this));
+							}
 							
 							if(is_api){
 								//var versioned_path = '';
@@ -400,6 +411,8 @@ module.exports = new Class({
 							request = this.request[verb](
 								merged,
 								function(err, resp, body){
+									//console.log('--default callback---');
+									//console.log(arguments);
 									
 									if(err){
 										this.fireEvent(this.ON_CONNECT_ERROR, {options: merged, uri: options.uri, route: route.path, error: err });
@@ -408,10 +421,15 @@ module.exports = new Class({
 										this.fireEvent(this.ON_CONNECT, {options: merged, uri: options.uri, route: route.path, response: resp, body: body });
 									}
 									
-									Array.each(callbacks, function(callback){
-										//console.log(callback);
-										callback(err, resp, body, {options: merged, uri: options.uri, route: route.path });
-									}.bind(this))
+									if(typeof(callback_alt) == 'function' || callback_alt instanceof Function){
+										callback_alt(err, resp, body, {options: merged, uri: options.uri, route: route.path });
+									}
+									else{
+										Array.each(callbacks, function(callback){
+											//console.log(callback);
+											callback(err, resp, body, {options: merged, uri: options.uri, route: route.path });
+										}.bind(this))
+									}
 									
 								}.bind(this)
 							);
