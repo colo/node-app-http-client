@@ -393,7 +393,7 @@ module.exports = new Class({
 							Object.merge(
 								merged,
 								options,
-								this.options.headers,
+								{ headers: this.options.headers },
 								{
 									baseUrl: uri,
 									//uri: path+options.uri,
@@ -406,7 +406,7 @@ module.exports = new Class({
 								}
 							);
 							
-							//console.log(merged);
+							console.log(merged);
 							
 							request = this.request[verb](
 								merged,
