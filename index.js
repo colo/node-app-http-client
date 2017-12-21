@@ -179,6 +179,9 @@ module.exports = new Class({
 		 *  - start
 		 * **/
 		if(this.options.logs){
+			//console.log('----instance----');
+			//console.log(this.options.logs);
+			
 			if(typeof(this.options.logs) == 'class'){
 				var tmp_class = this.options.logs;
 				this.logger = new tmp_class(this, {});
@@ -188,12 +191,23 @@ module.exports = new Class({
 				this.logger = this.options.logs;
 				this.options.logs = {};
 			}
+			//else if(this.options.logs.instance){//winston
+				//this.logger = this.options.logs;
+				//this.options.logs = {};
+			//}
 			else{
 				this.logger = new Logger(this, this.options.logs);
+				//app.use(this.logger.access());
 			}
-		
+			
 			//app.use(this.logger.access());
+			
+			//console.log(this.logger.instance);
 		}
+		
+		if(this.logger)
+			this.logger.extend_app(this);
+		
 		/**
 		 * logger
 		 *  - end
