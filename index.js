@@ -7,6 +7,7 @@ var Moo = require("mootools"),
 	pathToRegexp = require('path-to-regexp'),
 	semver = require('semver');
 	
+	
 	//Layer = require('express/lib/router/layer');//express Layer
 	//express = require('express'),
 	
@@ -37,7 +38,8 @@ module.exports = new Class({
   
   api: {},
   
-  available_methods: ['put', 'patch', 'post', 'head', 'del', 'delete', 'get'],
+  methods: ['put', 'patch', 'post', 'head', 'del', 'delete', 'get'],
+  //methods: require('methods'),
   
   logger: null,
   authorization:null,
@@ -290,14 +292,17 @@ module.exports = new Class({
 			instance = this;
 		}
 			
-		Array.each(this.available_methods, function(verb){
+		//Array.each(this.available_methods, function(verb){
+		Array.each(this.methods, function(verb){
 			
+			console.log('---VERB---');
+			console.log(verb);
 			/**
 			 * @callback_alt if typeof function, gets executed instead of the method asigned to the matched route (is an alternative callback, instead of the default usage)
 			 * */
 			instance[verb] = function(verb, original_func, options, callback_alt){
-				//console.log('---gets called??---')
-				//console.log(arguments);
+				console.log('---gets called??---')
+				console.log(arguments);
 				
 				var request;//the request object to return
 				
@@ -336,6 +341,9 @@ module.exports = new Class({
 				
 				var gzip = this.options.gzip || false;
 				
+				console.log('---ROUTES---');
+				console.log(routes);
+				
 				if(routes[verb]){
 					var uri_matched = false;
 					
@@ -367,10 +375,10 @@ module.exports = new Class({
 									
 									//if the callback function, has the same name as the verb, we had it already copied as "original_func"
 									if(fn == verb){
-										callbacks.push(original_func.bind(this));
+										callbacks.push({ func: original_func.bind(this), name: fn });
 									}
 									else{
-										callbacks.push(this[fn].bind(this));
+										callbacks.push({ func: this[fn].bind(this), name: fn });
 									}
 									
 								}.bind(this));
@@ -420,7 +428,10 @@ module.exports = new Class({
 								}
 							);
 							
+							console.log('---MERGED----');
 							console.log(merged);
+							//console.log(process.env.PROFILING_ENV);
+							//console.log(this.logger);
 							
 							request = this.request[verb](
 								merged,
@@ -434,17 +445,34 @@ module.exports = new Class({
 									else{
 										this.fireEvent(this.ON_CONNECT, {options: merged, uri: options.uri, route: route.path, response: resp, body: body });
 									}
+
 									
 									if(typeof(callback_alt) == 'function' || callback_alt instanceof Function){
+										var profile = 'ID['+this.options.id+']:METHOD['+verb+']:PATH['+merged.uri+']:CALLBACK[*callback_alt*]';
+										
+										if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
+										
 										callback_alt(err, resp, body, {options: merged, uri: options.uri, route: route.path });
+										
+										if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
 									}
 									else{
-										Array.each(callbacks, function(callback){
-											//console.log(callback);
+										Array.each(callbacks, function(fn){
+											var callback = fn.func;
+											var name = fn.name;
+											
+											var profile = 'ID['+this.options.id+']:METHOD['+verb+']:PATH['+merged.uri+']:CALLBACK['+name+']';
+											
+											if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
+											
 											callback(err, resp, body, {options: merged, uri: options.uri, route: route.path });
+											
+											if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
+											
 										}.bind(this))
 									}
 									
+										
 								}.bind(this)
 							);
 						}
@@ -463,7 +491,7 @@ module.exports = new Class({
 				return request;
 				
 			}.bind(this, verb, this[verb]);//copy the original function if there are func like this.get, this.post, etc
-
+			
 		}.bind(this));
 		
 	},
@@ -568,15 +596,52 @@ module.exports = new Class({
   load: function(wrk_dir, options){
 		options = options || {};
 		
-		options.scheme = options.scheme || this.options.scheme;
-		options.url = options.url || this.options.url;
-		options.port = options.port || this.options.port;
-		options.authentication = options.authentication || this.options.authentication;
-		options.jar = options.jar || this.options.jar;
-		options.gzip = options.gzip || this.options.gzip;
+		var get_options = function(options){
+			options.scheme = options.scheme || this.options.scheme;
+			options.url = options.url || this.options.url;
+			options.port = options.port || this.options.port;
+			options.authentication = options.authentication || this.options.authentication;
+			options.jar = options.jar || this.options.jar;
+			options.gzip = options.gzip || this.options.gzip;
+			
+			//if(!options.authorization){
+				//options.authorization = {};
+			//}
+			
+			///**
+			 //* subapps will inherit app rbac rules
+			 //* 
+			 //* */
+			//options.authorization.process = this.authorization.getRules();
+			
+			///**
+			 //* subapps will re-use main app session 
+			 //* */
+			//if(!options.session){
+				//options.session = this.session;
+			//}
+			
+			//if(!options.middlewares){
+				//options.middlewares = this.options.middlewares;
+			//}
+			//else{
+				//options.middlewares.combine(this.options.middlewares);
+			//}
+			
+			/**
+			 * subapps will re-use main app logger
+			 * */
+			//if(!options.logs){
+				//options.logs = this.logger;
+				////options.logs = this.options.logs;
+			//}
+			if(this.logger)	
+				options.logs = this.logger;
+			
+			return options;
 		
-		//console.log('load.options');
-		//console.log(options);
+		}.bind(this);
+		
 		
 		fs.readdirSync(wrk_dir).forEach(function(file) {
 
@@ -629,7 +694,7 @@ module.exports = new Class({
 									//app_path = this.options.path+app.options.path;
 								
 								options.path = app_path;
-								app = new app(options);
+								app = new app(get_options(options));
 								
 								/*////console.log('mootols_app.params:');
 								////console.log(Object.clone(instance.params));*/
@@ -678,7 +743,7 @@ module.exports = new Class({
 								
 						options.path = app_path;
 								
-						app = new app(options);
+						app = new app(get_options(options));
 						//app = instance.express();
 						//id = (instance.id) ? instance.id : id;
 					}
