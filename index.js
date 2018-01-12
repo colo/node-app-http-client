@@ -1,39 +1,27 @@
 'use strict'
 
-var Moo = require("mootools"),
-	path = require('path'),
-	fs = require('fs'),
-	request = require('request'),
-	pathToRegexp = require('path-to-regexp'),
-	semver = require('semver');
-	
-	
-	//Layer = require('express/lib/router/layer');//express Layer
-	//express = require('express'),
-	
-	//session = require('express-session');//for passport session
-	////bodyParser = require('body-parser'),//json parse
+//var Moo = require("mootools"),
+var App = require('node-app'),
+		path = require('path'),
+		fs = require('fs'),
+		request = require('request'),
+		pathToRegexp = require('path-to-regexp'),
+		semver = require('semver');
+		
 
-	
-
-var Logger = require('node-express-logger'),
-	Authorization = require('node-express-authorization');
+//var Logger = require('node-express-logger'),
+var Authorization = require('node-express-authorization');
 	//Authentication = require('node-express-authentication');
 
 
 
 module.exports = new Class({
-  Implements: [Options, Events],
-  
-  ON_LOAD_APP: 'onLoadApp',
-  ON_USE: 'onUse',
-  ON_USE_APP: 'onUseApp',
+  //Implements: [Options, Events],
+  Extends: App,
   
   ON_CONNECT: 'onConnect',
   ON_CONNECT_ERROR: 'onConnectError',
   
-  //app: null,
-  //uri: null,
   request: null,
   
   api: {},
@@ -41,29 +29,24 @@ module.exports = new Class({
   methods: ['put', 'patch', 'post', 'head', 'del', 'delete', 'get'],
   //methods: require('methods'),
   
-  logger: null,
+  //logger: null,
   authorization:null,
   //authentication: null,
   _merged_apps: {},
   
   options: {
 			
-		id: '',
-		path: '',
+		//id: '',
+		//path: '',
 		
 		scheme: 'http',
 		url: '127.0.0.1',
 		port: 8080,
 		
-		//request: {
-		//},
-		
 		headers: {},
 		
 		jar: false,
-		////logs : { 
-			////path: './logs' 
-		////},
+		
 		logs: null,
 		
 		authentication: null,
@@ -76,10 +59,6 @@ module.exports = new Class({
 			//basic: false
 		//},
 		
-		////authorization: {
-			////config: null,
-			////init: true
-		////},
 		authorization: null,
 		
 		
@@ -171,7 +150,7 @@ module.exports = new Class({
   },
   initialize: function(options){
 		
-		this.setOptions(options);//override default options
+		this.parent(options);//override default options
 		
 		this.request = request;
 		
@@ -180,32 +159,32 @@ module.exports = new Class({
 		 * logger
 		 *  - start
 		 * **/
-		if(this.options.logs){
-			//console.log('----instance----');
-			//console.log(this.options.logs);
+		//if(this.options.logs){
+			////console.log('----instance----');
+			////console.log(this.options.logs);
 			
-			if(typeof(this.options.logs) == 'class'){
-				var tmp_class = this.options.logs;
-				this.logger = new tmp_class(this, {});
-				this.options.logs = {};
-			}
-			else if(typeof(this.options.logs) == 'function'){
-				this.logger = this.options.logs;
-				this.options.logs = {};
-			}
-			//else if(this.options.logs.instance){//winston
+			//if(typeof(this.options.logs) == 'class'){
+				//var tmp_class = this.options.logs;
+				//this.logger = new tmp_class(this, {});
+				//this.options.logs = {};
+			//}
+			//else if(typeof(this.options.logs) == 'function'){
 				//this.logger = this.options.logs;
 				//this.options.logs = {};
 			//}
-			else{
-				this.logger = new Logger(this, this.options.logs);
-				//app.use(this.logger.access());
-			}
+			////else if(this.options.logs.instance){//winston
+				////this.logger = this.options.logs;
+				////this.options.logs = {};
+			////}
+			//else{
+				//this.logger = new Logger(this, this.options.logs);
+				////app.use(this.logger.access());
+			//}
 			
-			//app.use(this.logger.access());
+			////app.use(this.logger.access());
 			
-			//console.log(this.logger.instance);
-		}
+			////console.log(this.logger.instance);
+		//}
 		
 		if(this.logger)
 			this.logger.extend_app(this);
@@ -495,105 +474,7 @@ module.exports = new Class({
 		}.bind(this));
 		
 	},
-	use: function(mount, app){
-		//console.log('app');
-		//console.log(typeOf(app));
-		//console.log(mount);
-		
-		this.fireEvent(this.ON_USE, [mount, app, this]);
-		
-		if(typeOf(app) == 'class' || typeOf(app) == 'object')
-			this.fireEvent(this.ON_USE_APP, [mount, app, this]);
-		
-		//if(typeOf(app) == 'class')
-			//app = new app();
-		
-		if(typeOf(app) == 'object'){
-			////console.log('extend_app.authorization');
-			////console.log(app.options.authorization);
-	
-			if(this.authorization && app.options.authorization && app.options.authorization.config){
-				
-				var rbac = fs.readFileSync(app.options.authorization.config , 'ascii');
-				app.options.authorization.config = rbac;
-				this.authorization.processRules(
-					JSON.decode(
-						rbac
-					)
-				);
-			}
-			
-			//this.app.use(mount, app.express());
-		}
-		else{
-			//this.app.use(mount, app);
-		}
-		
-		//var merged = this._merge(mount, app);
-		//Object.merge(this._merged_apps, this._merge(mount, app));
-		
-		//console.log(this._merged_apps);
-		
-		//Object.append(this, this._merge(mount, app));
-		//console.log(this._merge(mount, app));
-		var to_append = this._merge(mount, app);
-		
-		//console.log(Object.keys(to_append)[0]);
-		
-		var key = Object.keys(to_append)[0];
-		if(this[key]){//an app has beend loaded on that key
-			var tmp = this[key];
-			if(typeOf(tmp) == 'object'){
-				//var tmpObj = {};
-				//tmpObj[key] = tmp;
-				
-				//console.log(to_append);
-				//console.log(tmp);
-				delete this[key];
-				
-				Object.append(to_append[key], tmp);
-				//Object.each(tmp, function(value, tmpKey){
-					//console.log(value);
-					////Object.append(to_append[tmpKey], value);
-				//});
-				
-				
-				
-			}
-			
-			Object.append(this, to_append);
-			//console.log('TYPEOF');
-			//console.log(to_append);
-			//console.log(tmp);
-		}
-		else{
-			//console.log(to_append);	
-			Object.append(this, to_append);
-		}
-		
-  },
-  _merge: function(mount, app){
-		//console.log('--mount--');
-		//console.log(mount);
-		//console.log(Object.getLength(mount));
-		
-		if(Object.getLength(mount) > 0){
-			Object.each(mount, function(value, key){
-				//console.log('--KEY--');
-				//console.log(key);
-				//console.log(value);
-				
-				mount[key] = this._merge(value, app);
-				
-			}.bind(this));
-			
-			return mount;
-		}
-		else{
-			return app;
-		}
-	},
-  load: function(wrk_dir, options){
+	load: function(wrk_dir, options){
 		options = options || {};
 		
 		var get_options = function(options){
@@ -604,37 +485,10 @@ module.exports = new Class({
 			options.jar = options.jar || this.options.jar;
 			options.gzip = options.gzip || this.options.gzip;
 			
-			//if(!options.authorization){
-				//options.authorization = {};
-			//}
-			
-			///**
-			 //* subapps will inherit app rbac rules
-			 //* 
-			 //* */
-			//options.authorization.process = this.authorization.getRules();
-			
-			///**
-			 //* subapps will re-use main app session 
-			 //* */
-			//if(!options.session){
-				//options.session = this.session;
-			//}
-			
-			//if(!options.middlewares){
-				//options.middlewares = this.options.middlewares;
-			//}
-			//else{
-				//options.middlewares.combine(this.options.middlewares);
-			//}
-			
 			/**
 			 * subapps will re-use main app logger
 			 * */
-			//if(!options.logs){
-				//options.logs = this.logger;
-				////options.logs = this.options.logs;
-			//}
+			
 			if(this.logger)	
 				options.logs = this.logger;
 			
@@ -642,131 +496,9 @@ module.exports = new Class({
 		
 		}.bind(this);
 		
+		this.parent(wrk_dir, get_options(options));
 		
-		fs.readdirSync(wrk_dir).forEach(function(file) {
-
-			var full_path = path.join(wrk_dir, file);
-			
-			
-			if(! (file.charAt(0) == '.')){//ommit 'hiden' files
-				//console.log('-------');
-				
-				//console.log('app load: '+ file);
-				var app = null;
-				var id = '';//app id
-				var mount = {};
-				
-				if(fs.statSync(full_path).isDirectory() == true){//apps inside dir
-					
-					////console.log('dir app: '+full_path);
-					
-					var dir = file;//is dir
-					
-					
-					fs.readdirSync(full_path).forEach(function(file) {//read each file in directory
-						
-						var app_path = this.options.path;
-						
-						if(path.extname(file) == '.js' && ! (file.charAt(0) == '.')){
-							
-							////console.log('app load js: '+ file);
-							app = require(path.join(full_path, file));
-							
-							mount[dir] = {};
-							if(file == 'index.js'){
-								//mount = id = dir;
-								//mount[dir] = {};
-								app_path += dir;
-							}
-							else{
-								//id = dir+'.'+path.basename(file, '.js');
-								//mount = dir+'/'+path.basename(file, '.js');
-								mount[dir][path.basename(file, '.js')] = {};
-								app_path += dir+'/'+path.basename(file, '.js');
-							}
-							
-							if(typeOf(app) == 'class'){//mootools class
-								////console.log('class app');
-								
-								this.fireEvent(this.ON_LOAD_APP, [app, this]);
-								
-								//if(app.options.path)
-									//app_path = this.options.path+app.options.path;
-								
-								options.path = app_path;
-								app = new app(get_options(options));
-								
-								/*////console.log('mootols_app.params:');
-								////console.log(Object.clone(instance.params));*/
-								
-								//app = instance.express();
-								//id = (instance.id) ? instance.id : id;
-								//apps[app.locals.id || id]['app'] = app;
-							}
-							else{//nodejs module
-								////console.log('express app...nothing to do');
-							}
-							
-							//mount = '/'+mount;
-							
-							this.use(mount, app);
-							//apps[app.locals.id || id] = {};
-							//apps[app.locals.id || id]['app'] = app;
-							//apps[app.locals.id || id]['mount'] = mount;
-						}
-
-					}.bind(this));//end load single JS files
-
-				}
-				else if(path.extname( file ) == '.js'){// single js apps
-					////console.log('file app: '+full_path);
-					////console.log('basename: '+path.basename(file, '.js'));
-					
-					app = require(full_path);
-					id = path.basename(file, '.js');
-					
-					if(file == 'index.js'){
-						//mount = '/';
-					}
-					else{
-						//mount = '/'+id;
-						mount[id] = {};
-						app_path += '/'+id;
-					}
-					
-					if(typeOf(app) == 'class'){//mootools class
-						
-						this.fireEvent(this.ON_LOAD_APP, [app, this]);
-						
-						//if(app.options.path)
-							//app_path = this.options.path+app.options.path;
-								
-						options.path = app_path;
-								
-						app = new app(get_options(options));
-						//app = instance.express();
-						//id = (instance.id) ? instance.id : id;
-					}
-					else{//nodejs module
-						////console.log('express app...nothing to do');
-					}
-					
-					//console.log(mount);
-					this.use(mount, app);
-					
-					//apps[app.locals.id || id] = {};
-					//apps[app.locals.id || id]['app'] = app;
-					//apps[app.locals.id || id]['mount'] = mount;
-				}
-				
-				
-			}
-		}.bind(this))
 		
-		//console.log(this._merged_apps);
-		Object.append(this, this._merged_apps);
-		
-		//return apps;
 	},
   
 	
