@@ -40,7 +40,7 @@ module.exports = new Class({
 		//path: '',
 		
 		scheme: 'http',
-		url: '127.0.0.1',
+		host: '127.0.0.1',
 		port: 8080,
 		
 		headers: {},
@@ -252,10 +252,10 @@ module.exports = new Class({
 		{
 			var user = this.options.authentication.user || this.options.authentication.username;
 			var passwd = this.options.authentication.pass || this.options.authentication.password;
-			uri = this.options.scheme+'://'+user+':'+passwd+'@'+this.options.url+':'+this.options.port;
+			uri = this.options.scheme+'://'+user+':'+passwd+'@'+this.options.host+':'+this.options.port;
 		}
 		else{
-			uri = this.options.scheme+'://'+this.options.url+':'+this.options.port;
+			uri = this.options.scheme+'://'+this.options.host+':'+this.options.port;
 		}
 		
 		
@@ -479,7 +479,7 @@ module.exports = new Class({
 		
 		var get_options = function(options){
 			options.scheme = options.scheme || this.options.scheme;
-			options.url = options.url || this.options.url;
+			options.host = options.host || this.options.host;
 			options.port = options.port || this.options.port;
 			options.authentication = options.authentication || this.options.authentication;
 			options.jar = options.jar || this.options.jar;
