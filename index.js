@@ -15,7 +15,7 @@ var Authorization = require('node-express-authorization');
 
 
 
-module.exports = new Class({
+var AppHttpClient = new Class({
   //Implements: [Options, Events],
   Extends: App,
   
@@ -474,6 +474,12 @@ module.exports = new Class({
 		}.bind(this));
 		
 	},
+	use: function(mount, app){
+		console.log('---AppHttpClient----');
+		console.log(instanceOf(app, AppHttpClient));
+		if(instanceOf(app, AppHttpClient))
+			this.parent(mount, app);
+	},
 	load: function(wrk_dir, options){
 		options = options || {};
 		
@@ -505,3 +511,4 @@ module.exports = new Class({
 });
 
 
+module.exports = AppHttpClient;
