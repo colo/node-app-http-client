@@ -1,5 +1,5 @@
 {
-  "name": "login",
+  "name": "node-app-http-client",
   "version": "0.0.1",
   "description": "Login App",
   "author": {
@@ -13,6 +13,8 @@
   "dependencies": {
     "methods": "^1.1.2",
     "mootools": "^1.5.2",
+    "node-app": "git+https://github.com/colo/node-app.git",
+    "node-express-authorization": "git+https://github.com/colo/node-express-authorization.git",
     "path-to-regexp": "^1.5.3",
     "request": "^2.72.0",
     "semver": "^5.2.0"
