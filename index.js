@@ -9,9 +9,9 @@ var App = require('node-app'),
 		semver = require('semver');
 		
 
-//var Logger = require('node-express-logger'),
-var Authorization = require('node-express-authorization');
-	//Authentication = require('node-express-authentication');
+////var Logger = require('node-express-logger'),
+//var Authorization = require('node-express-authorization');
+	////Authentication = require('node-express-authentication');
 
 
 
@@ -218,11 +218,19 @@ var AppHttpClient = new Class({
 					this.options.authorization.config = rbac;
 				}
 				
+				/**
+				 * @todo
+				 * should do module injection, avoid "automatigically" importing and starting modules
+				 * */
 				authorization = new Authorization(this, 
 					JSON.decode(
 						rbac
 					)
 				);
+				/**
+				 * *
+				 * */
+				 
 			}
 			
 			if(authorization){
