@@ -160,8 +160,8 @@ var AppHttpClient = new Class({
 		 *  - start
 		 * **/
 		//if(this.options.logs){
-			////console.log('----instance----');
-			////console.log(this.options.logs);
+			//////console.log('----instance----');
+			//////console.log(this.options.logs);
 			
 			//if(typeof(this.options.logs) == 'class'){
 				//var tmp_class = this.options.logs;
@@ -183,7 +183,7 @@ var AppHttpClient = new Class({
 			
 			////app.use(this.logger.access());
 			
-			////console.log(this.logger.instance);
+			//////console.log(this.logger.instance);
 		//}
 		
 		if(this.logger)
@@ -282,14 +282,14 @@ var AppHttpClient = new Class({
 		//Array.each(this.available_methods, function(verb){
 		Array.each(this.methods, function(verb){
 			
-			console.log('---VERB---');
-			console.log(verb);
+			//console.log('---VERB---');
+			//console.log(verb);
 			/**
 			 * @callback_alt if typeof function, gets executed instead of the method asigned to the matched route (is an alternative callback, instead of the default usage)
 			 * */
 			instance[verb] = function(verb, original_func, options, callback_alt){
-				console.log('---gets called??---')
-				console.log(arguments);
+				//console.log('---gets called??---')
+				//console.log(arguments);
 				
 				var request;//the request object to return
 				
@@ -328,8 +328,8 @@ var AppHttpClient = new Class({
 				
 				var gzip = this.options.gzip || false;
 				
-				console.log('---ROUTES---');
-				console.log(routes);
+				//console.log('---ROUTES---');
+				//console.log(routes);
 				
 				if(routes[verb]){
 					var uri_matched = false;
@@ -342,11 +342,11 @@ var AppHttpClient = new Class({
 						var keys = []
 						var re = pathToRegexp(route.path, keys);
 						
-						//console.log('route path: '+route.path);
-						////console.log(re.exec(options.uri));
-						//console.log('options.uri: '+options.uri);
-						//console.log(path);
-						//console.log('--------');
+						////console.log('route path: '+route.path);
+						//////console.log(re.exec(options.uri));
+						////console.log('options.uri: '+options.uri);
+						////console.log(path);
+						////console.log('--------');
 							
 						if(options.uri != null && re.test(options.uri) == true){
 							uri_matched = true;
@@ -358,7 +358,7 @@ var AppHttpClient = new Class({
 							 * */
 							if(route.callbacks && route.callbacks.length > 0){
 								route.callbacks.each(function(fn){
-									//console.log('route function: ' + fn);
+									////console.log('route function: ' + fn);
 									
 									//if the callback function, has the same name as the verb, we had it already copied as "original_func"
 									if(fn == verb){
@@ -393,10 +393,10 @@ var AppHttpClient = new Class({
 							
 							
 								
-							//console.log(path+options.uri);
-							//console.log('PATH');
-							//console.log(options.uri);
-							//console.log(options.uri);
+							////console.log(path+options.uri);
+							////console.log('PATH');
+							////console.log(options.uri);
+							////console.log(options.uri);
 							
 							var merged = {};
 							Object.merge(
@@ -415,16 +415,16 @@ var AppHttpClient = new Class({
 								}
 							);
 							
-							console.log('---MERGED----');
-							console.log(merged);
-							//console.log(process.env.PROFILING_ENV);
-							//console.log(this.logger);
+							//console.log('---MERGED----');
+							//console.log(merged);
+							////console.log(process.env.PROFILING_ENV);
+							////console.log(this.logger);
 							
 							request = this.request[verb](
 								merged,
 								function(err, resp, body){
-									//console.log('--default callback---');
-									//console.log(arguments);
+									////console.log('--default callback---');
+									////console.log(arguments);
 									
 									if(err){
 										this.fireEvent(this.ON_CONNECT_ERROR, {options: merged, uri: options.uri, route: route.path, error: err });
@@ -470,7 +470,7 @@ var AppHttpClient = new Class({
 						throw new Error('No routes matched for URI: '+uri+path+options.uri);
 				}
 				else{
-					//console.log(routes);
+					////console.log(routes);
 					throw new Error('No routes defined for method: '+verb.toUpperCase());
 					
 				}
@@ -483,8 +483,8 @@ var AppHttpClient = new Class({
 		
 	},
 	use: function(mount, app){
-		console.log('---AppHttpClient----');
-		console.log(instanceOf(app, AppHttpClient));
+		//console.log('---AppHttpClient----');
+		//console.log(instanceOf(app, AppHttpClient));
 		if(instanceOf(app, AppHttpClient))
 			this.parent(mount, app);
 	},
