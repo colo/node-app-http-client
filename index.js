@@ -150,6 +150,13 @@ var AppHttpClient = new Class({
   },
   initialize: function(options){
 		
+		if(
+			this.options.api
+			&& this.options.api.path
+			&& this.options.api.path.indexOf('/') == 0
+		)
+			delete options.api.path
+			
 		this.parent(options);//override default options
 		
 		this.request = request;
