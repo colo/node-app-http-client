@@ -7,7 +7,7 @@ var App = require('node-app'),
 		request = require('request'),
 		pathToRegexp = require('path-to-regexp'),
 		semver = require('semver');
-		
+
 
 ////var Logger = require('node-express-logger'),
 //var Authorization = require('node-express-authorization');
@@ -18,39 +18,39 @@ var App = require('node-app'),
 var AppHttpClient = new Class({
   //Implements: [Options, Events],
   Extends: App,
-  
+
   ON_CONNECT: 'onConnect',
   ON_CONNECT_ERROR: 'onConnectError',
-  
+
   request: null,
-  
+
   api: {},
-  
+
   methods: ['put', 'patch', 'post', 'head', 'del', 'delete', 'get'],
   //methods: require('methods'),
-  
+
   //logger: null,
   authorization:null,
   //authentication: null,
   _merged_apps: {},
-  
+
   options: {
-			
+
 		//id: '',
 		//path: '',
-		
+
 		scheme: 'http',
 		host: '127.0.0.1',
 		port: 8080,
-		
+
 		headers: {},
-		
+
 		jar: false,
-		
+
 		logs: null,
-		
+
 		authentication: null,
-		
+
 		//authentication: {
 			//username: 'user',
 			//password: 'pass',
@@ -58,15 +58,15 @@ var AppHttpClient = new Class({
 			//bearer: 'bearer,
 			//basic: false
 		//},
-		
+
 		authorization: null,
-		
-		
+
+
 		content_type: 'text/plain',
 		gzip: true,
-		
+
 		/*routes: {
-			
+
 			get: [
 				{
 					path: '/:param',
@@ -86,21 +86,21 @@ var AppHttpClient = new Class({
 				callbacks: ['', 'get']
 				},
 			]
-			
+
 		},*/
-		
+
 		api: {
-			
+
 			content_type: 'application/json',
-			
+
 			path: '',
-			
+
 			version: '0.0.0',
-			
+
 			versioned_path: false, //default false
-			
+
 			//accept_header: 'accept-version', //implement?
-			
+
 			/*routes: {
 				get: [
 					{
@@ -133,10 +133,10 @@ var AppHttpClient = new Class({
 					version: '',
 					},
 				]
-				
+
 			},*/
-			
-			
+
+
 			/*doc: {
 				'/': {
 					type: 'function',
@@ -148,19 +148,23 @@ var AppHttpClient = new Class({
 			},*/
 		},
   },
-  initialize: function(options){
-		
+  initialize: function(options, _request){
+
 		if(
 			this.options.api
 			&& this.options.api.path
 			&& this.options.api.path.indexOf('/') == 0
 		)
 			delete options.api.path
-			
+
 		this.parent(options);//override default options
-		
-		this.request = request;
-		
+		if(_request){
+			this.request = _request;
+		}
+		else{
+			this.request = request;
+		}
+
 
 		/**
 		 * logger
@@ -169,7 +173,7 @@ var AppHttpClient = new Class({
 		//if(this.options.logs){
 			//////console.log('----instance----');
 			//////console.log(this.options.logs);
-			
+
 			//if(typeof(this.options.logs) == 'class'){
 				//var tmp_class = this.options.logs;
 				//this.logger = new tmp_class(this, {});
@@ -187,27 +191,27 @@ var AppHttpClient = new Class({
 				//this.logger = new Logger(this, this.options.logs);
 				////app.use(this.logger.access());
 			//}
-			
+
 			////app.use(this.logger.access());
-			
+
 			//////console.log(this.logger.instance);
 		//}
-		
+
 		if(this.logger)
 			this.logger.extend_app(this);
-		
+
 		/**
 		 * logger
 		 *  - end
 		 * **/
-		
+
 		/**
 		 * authorization
 		 * - start
 		 * */
 		 if(this.options.authorization && this.options.authorization.init !== false){
 			 var authorization = null;
-			 
+
 			 if(typeof(this.options.authorization) == 'class'){
 				 authorization = new this.options.authorization({});
 				 this.options.authorization = {};
@@ -218,18 +222,18 @@ var AppHttpClient = new Class({
 			}
 			else if(this.options.authorization.config){
 				var rbac = this.options.authorization.config;
-				
+
 				if(typeof(this.options.authorization.config) == 'string'){
 					//rbac = fs.readFileSync(path.join(__dirname, this.options.authorization.config ), 'ascii');
 					rbac = fs.readFileSync(this.options.authorization.config , 'ascii');
 					this.options.authorization.config = rbac;
 				}
-				
+
 				/**
 				 * @todo
 				 * should do module injection, avoid "automatigically" importing and starting modules
 				 * */
-				authorization = new Authorization(this, 
+				authorization = new Authorization(this,
 					JSON.decode(
 						rbac
 					)
@@ -237,9 +241,9 @@ var AppHttpClient = new Class({
 				/**
 				 * *
 				 * */
-				 
+
 			}
-			
+
 			if(authorization){
 				this.authorization = authorization;
 				//app.use(this.authorization.session());
@@ -249,17 +253,17 @@ var AppHttpClient = new Class({
 		 * authorization
 		 * - end
 		 * */
-		
+
 		if(this.options.api && this.options.api.routes)
 			this.apply_routes(this.options.api.routes, true);
-		
+
 		this.apply_routes(this.options.routes, false);
-		
-		
+
+
   },
   apply_routes: function(routes, is_api){
 		var uri = '';
-		
+
 		if(this.options.authentication &&
 			this.options.authentication.basic &&
 			(this.options.authentication.user || this.options.authentication.username) &&
@@ -272,11 +276,11 @@ var AppHttpClient = new Class({
 		else{
 			uri = this.options.scheme+'://'+this.options.host+':'+this.options.port;
 		}
-		
-		
+
+
 		var instance = null;
 		var api = this.options.api;
-		
+
 		if(is_api){
 			//path = ((typeof(api.path) !== "undefined") ? this.options.path+api.path : this.options.path).replace('//', '/');
 			instance = this.api;
@@ -285,10 +289,10 @@ var AppHttpClient = new Class({
 			//path = (typeof(this.options.path) !== "undefined") ? this.options.path : '';
 			instance = this;
 		}
-			
+
 		//Array.each(this.available_methods, function(verb){
 		Array.each(this.methods, function(verb){
-			
+
 			//console.log('---VERB---');
 			//console.log(verb);
 			/**
@@ -297,9 +301,9 @@ var AppHttpClient = new Class({
 			instance[verb] = function(verb, original_func, options, callback_alt){
 				//console.log('---gets called??---')
 				//console.log(arguments);
-				
+
 				var request;//the request object to return
-				
+
 				var path = '';
 				if(is_api){
 					path = ((typeof(api.path) !== "undefined") ? this.options.path+api.path : this.options.path).replace('//', '/');
@@ -307,10 +311,10 @@ var AppHttpClient = new Class({
 				else{
 					path = (typeof(this.options.path) !== "undefined") ? this.options.path : '';
 				}
-				
-				
+
+
 				options = options || {};
-				
+
 				if(options.auth === false || options.auth === null){
 					delete options.auth;
 				}
@@ -321,10 +325,10 @@ var AppHttpClient = new Class({
 				{
 					options.auth = this.options.authentication;
 				}
-				
+
 				var content_type = '';
 				var version = '';
-				
+
 				if(is_api){
 					content_type = (typeof(api.content_type) !== "undefined") ? api.content_type : '';
 					version = (typeof(api.version) !== "undefined") ? api.version : '';
@@ -332,41 +336,41 @@ var AppHttpClient = new Class({
 				else{
 					content_type = (typeof(this.options.content_type) !== "undefined") ? this.options.content_type : '';
 				}
-				
+
 				var gzip = this.options.gzip || false;
-				
+
 				//console.log('---ROUTES---');
 				//console.log(routes);
-				
+
 				if(routes[verb]){
 					var uri_matched = false;
-					
+
 					Array.each(routes[verb], function(route){
-						
+
 						content_type = (typeof(route.content_type) !== "undefined") ? route.content_type : content_type;
 						gzip = route.gzip || false;
-						
+
 						var keys = []
 						var re = pathToRegexp(route.path, keys);
-						
+
 						////console.log('route path: '+route.path);
 						//////console.log(re.exec(options.uri));
 						////console.log('options.uri: '+options.uri);
 						////console.log(path);
 						////console.log('--------');
-							
+
 						if(options.uri != null && re.test(options.uri) == true){
 							uri_matched = true;
-							
+
 							var callbacks = [];
-							
+
 							/**
 							 * if no callbacks defined for a route, you should use callback_alt param
 							 * */
 							if(route.callbacks && route.callbacks.length > 0){
 								route.callbacks.each(function(fn){
 									////console.log('route function: ' + fn);
-									
+
 									//if the callback function, has the same name as the verb, we had it already copied as "original_func"
 									if(fn == verb){
 										callbacks.push({ func: original_func.bind(this), name: fn });
@@ -374,10 +378,10 @@ var AppHttpClient = new Class({
 									else{
 										callbacks.push({ func: this[fn].bind(this), name: fn });
 									}
-									
+
 								}.bind(this));
 							}
-							
+
 							if(is_api){
 								//var versioned_path = '';
 								if(api.versioned_path === true && version != ''){
@@ -388,23 +392,23 @@ var AppHttpClient = new Class({
 									//path += (typeof(route.path) !== "undefined") ? '/' + route.path : '';
 								}
 							}
-							
+
 							//if(!is_api){
 								path += '/'+options.uri;
 							//}
-							
+
 							path = path.replace('//', '/');
-							
+
 							if(path == '/')
 								path = '';
-							
-							
-								
+
+
+
 							////console.log(path+options.uri);
 							////console.log('PATH');
 							////console.log(options.uri);
 							////console.log(options.uri);
-							
+
 							var merged = {};
 							Object.merge(
 								merged,
@@ -421,18 +425,18 @@ var AppHttpClient = new Class({
 									jar: this.options.jar
 								}
 							);
-							
+
 							//console.log('---MERGED----');
 							//console.log(merged);
 							////console.log(process.env.PROFILING_ENV);
 							////console.log(this.logger);
-							
+
 							request = this.request[verb](
 								merged,
 								function(err, resp, body){
 									////console.log('--default callback---');
 									////console.log(arguments);
-									
+
 									if(err){
 										this.fireEvent(this.ON_CONNECT_ERROR, {options: merged, uri: options.uri, route: route.path, error: err });
 									}
@@ -440,54 +444,54 @@ var AppHttpClient = new Class({
 										this.fireEvent(this.ON_CONNECT, {options: merged, uri: options.uri, route: route.path, response: resp, body: body });
 									}
 
-									
+
 									if(typeof(callback_alt) == 'function' || callback_alt instanceof Function){
 										var profile = 'ID['+this.options.id+']:METHOD['+verb+']:PATH['+merged.uri+']:CALLBACK[*callback_alt*]';
-										
+
 										if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
-										
+
 										callback_alt(err, resp, body, {options: merged, uri: options.uri, route: route.path });
-										
+
 										if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
 									}
 									else{
 										Array.each(callbacks, function(fn){
 											var callback = fn.func;
 											var name = fn.name;
-											
+
 											var profile = 'ID['+this.options.id+']:METHOD['+verb+']:PATH['+merged.uri+']:CALLBACK['+name+']';
-											
+
 											if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
-											
+
 											callback(err, resp, body, {options: merged, uri: options.uri, route: route.path });
-											
+
 											if(process.env.PROFILING_ENV && this.logger) this.profile(profile);
-											
+
 										}.bind(this))
 									}
-									
-										
+
+
 								}.bind(this)
 							);
 						}
-						
+
 					}.bind(this));
-					
+
 					if(!uri_matched)
 						throw new Error('No routes matched for URI: '+uri+path+options.uri);
 				}
 				else{
 					////console.log(routes);
 					throw new Error('No routes defined for method: '+verb.toUpperCase());
-					
+
 				}
-				
+
 				return request;
-				
+
 			}.bind(this, verb, this[verb]);//copy the original function if there are func like this.get, this.post, etc
-			
+
 		}.bind(this));
-		
+
 	},
 	use: function(mount, app){
 		//console.log('---AppHttpClient----');
@@ -495,9 +499,9 @@ var AppHttpClient = new Class({
 		if(instanceOf(app, AppHttpClient))
 			this.parent(mount, app);
 	},
-	
-  
-	
+
+
+
 });
 
 
